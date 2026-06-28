@@ -8,15 +8,9 @@ app.get("/api", async (req, res) => {
   let browser;
 
   try {
-    const isVercel = !!process.env.VERCEL;
-
     browser = await puppeteer.launch({
-      args: isVercel
-        ? chromium.args
-        : ["--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath: isVercel
-        ? await chromium.executablePath()
-        : undefined,
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
       headless: true,
     });
 
@@ -24,25 +18,22 @@ app.get("/api", async (req, res) => {
 
     await page.goto("https://vmbro-lt-75.pages.dev/", {
       waitUntil: "networkidle2",
-      timeout: 30000000,
+      timeout: 300000,
     });
 
     const title = await page.title();
 
-    // await browser.close();
+    await browser.close();
 
     res.send(title);
   } catch (err) {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+
     console.error(err);
-
-    // if (browser) await browser.close().catch(() => {});
-
     res.status(500).send(err.stack);
   }
-});
-
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Server started");
 });
 
 module.exports = app;
