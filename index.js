@@ -22,20 +22,20 @@ app.get("/api", async (req, res) => {
 
     const page = await browser.newPage();
 
-    await page.goto("https://www.google.com", {
+    await page.goto("https://vmbro-lt-75.pages.dev/", {
       waitUntil: "networkidle2",
-      timeout: 30000,
+      timeout: 30000000,
     });
 
     const title = await page.title();
 
-    await browser.close();
+    // await browser.close();
 
     res.send(title);
   } catch (err) {
     console.error(err);
 
-    if (browser) await browser.close().catch(() => {});
+    // if (browser) await browser.close().catch(() => {});
 
     res.status(500).send(err.stack);
   }
