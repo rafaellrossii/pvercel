@@ -1,37 +1,43 @@
-const app = require("express")();
+const express = require("express");
+const puppeteer = require("puppeteer-core");
+const chromium = require("@sparticuz/chromium");
 
-let chrome = {};
-let puppeteer;
-
-if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
-  chrome = require("chrome-aws-lambda");
-  puppeteer = require("puppeteer-core");
-} else {
-  puppeteer = require("puppeteer");
-}
+const app = express();
 
 app.get("/api", async (req, res) => {
-  let options = {};
-
-  if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
-    options = {
-      args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
-      defaultViewport: chrome.defaultViewport,
-      executablePath: await chrome.executablePath,
-      headless: true,
-      ignoreHTTPSErrors: true,
-    };
-  }
+  let browser;
 
   try {
-    let browser = await puppeteer.launch(options);
+    const isVercel = !!process.env.VERCEL;
 
-    let page = await browser.newPage();
-    await page.goto("https://www.google.com");
-    res.send(await page.title());
+    browser = await puppeteer.launch({
+      args: isVercel
+        ? chromium.args
+        : ["--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: isVercel
+        ? await chromium.executablePath()
+        : undefined,
+      headless: true,
+    });
+
+    const page = await browser.newPage();
+
+    await page.goto("https://www.google.com", {
+      waitUntil: "networkidle2",
+      timeout: 30000,
+    });
+
+    const title = await page.title();
+
+    await browser.close();
+
+    res.send(title);
   } catch (err) {
     console.error(err);
-    return null;
+
+    if (browser) await browser.close().catch(() => {});
+
+    res.status(500).send(err.stack);
   }
 });
 
